@@ -28,9 +28,9 @@
 
 // -----------------------------------------------------------
 // DeepSleep周期
-#define DEEPSLEEP_PERIOD_MS 1000000 // 1秒周期でDeepSleep
+#define DEEPSLEEP_PERIOD_MS    1000 // 1秒周期でDeepSleep
 // 基板のGPIO
-#define RGBLED_PIN        48   // YD-ESP32-S3 RGBLED @GPIO 48
+#define RGBLED_PIN              48   // YD-ESP32-S3 RGBLED @GPIO 48
 
 RTC_DATA_ATTR uint32_t g_boot_cnt = 0;
 
@@ -58,19 +58,25 @@ static void _uart_init(void)
 
 static void _deepsleep_init(void)
 {
+#ifdef DEBUG_NO_SLEEP
+    g_boot_cnt++;
+#else
+    // 起床要因がDeepSleep
+    if(esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+        g_boot_cnt++;
+        Serial.printf("Wakeup from DeepSleep!\r\n");
+    }
+#endif
+    Serial.printf("Boot Count: %lu\n", (unsigned long)g_boot_cnt);
+
     // DeepSleepの周期に設定
     esp_sleep_enable_timer_wakeup(DEEPSLEEP_PERIOD_MS * 1000); // ms -> us
+    Serial.printf("Set DeepSleep Period: %lu ms\r\n", (unsigned long)DEEPSLEEP_PERIOD_MS);
 }
 
 // -----------------------------------------------------------
 void setup()
 {
-    // 起床要因がDeepSleep
-    if(esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
-        g_boot_cnt++;
-    }
-    Serial.printf("Boot Count: %lu\n", g_boot_cnt);
-
     // DeepSleep初期化
     _deepsleep_init();
 
@@ -89,9 +95,22 @@ void setup()
 
 void loop()
 {
+#ifdef DEBUG_NO_SLEEP
+    // (DEBUG) DeepSleepから起床を擬似的に処理
+    Serial.printf("[DEBUG] DeepSleep Wake Up");
+    _deepsleep_init();
+#endif
+
     // BLEのメイン処理
+    Serial.printf("BLE Advertis\r\n");
     app_ble_main();
 
    // DeepSleep開始
+    Serial.printf("DeepSleeping...zzz\r\n");
+#ifdef DEBUG_NO_SLEEP
+    // (DEBUG) デバッグ時はDeepSleepしない
+    delay(DEEPSLEEP_PERIOD_MS);
+#else
     esp_deep_sleep_start();
+#endif
 }

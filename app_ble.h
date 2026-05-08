@@ -20,6 +20,7 @@
 // #define DEVELOP_BLE_PERIPHERAL
 // #define DEVELOP_BLE_CENTRAL
 
+#define DEBUG_NO_SLEEP
 // -----------------------------------------------------------
 
 typedef struct {
